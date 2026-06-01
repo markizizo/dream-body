@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1117">
+<title>Hälsotracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #181c27;
+  --surface2: #1e2333;
+  --border: rgba(255,255,255,0.07);
+  --text: #f0f2f8;
+  --muted: #6b7280;
+  --hint: #374151;
+  --green: #22c97a;
+  --green-dim: rgba(34,201,122,0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.12);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251,191,36,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.10);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+body { max-width: 430px; margin: 0 auto; padding-bottom: 80px; }
+
+/* NAV */
+.nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; }
+.nav-title { font-size: 16px; font-weight: 500; letter-spacing: -.01em; }
+.nav-date { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; color: var(--muted); background: none; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all .15s; text-align: center; }
+.tab.active { background: var(--surface2); color: var(--text); }
+
+/* PAGES */
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+
+/* METRIC ROW */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.metric .m-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+.metric .m-val { font-size: 26px; font-weight: 300; font-family: 'DM Mono', monospace; letter-spacing: -.02em; line-height: 1; }
+.metric .m-unit { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.metric.green { border-color: rgba(34,201,122,0.25); }
+.metric.green .m-val { color: var(--green); }
+.metric.amber { border-color: rgba(251,191,36,0.25); }
+.metric.amber .m-val { color: var(--amber); }
+.metric.blue { border-color: rgba(96,165,250,0.25); }
+.metric.blue .m-val { color: var(--blue); }
+.metric.purple { border-color: rgba(167,139,250,0.25); }
+.metric.purple .m-val { color: var(--purple); }
+
+/* INPUT CARD */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.card-title svg { opacity: .6; }
+
+/* INPUTS */
+.input-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.input-row:last-child { border-bottom: none; padding-bottom: 0; }
+.input-lbl { font-size: 14px; color: var(--text); flex: 1; }
+.input-hint { font-size: 11px; color: var(--muted); }
+.input-num { width: 80px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 15px; font-family: 'DM Mono', monospace; color: var(--text); text-align: right; outline: none; }
+.input-num:focus { border-color: var(--green); }
+
+/* CHECKLIST */
+.check-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+.check-item:last-child { border-bottom: none; }
+.check-box { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--hint); background: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+.check-box.checked { background: var(--green); border-color: var(--green); }
+.check-box svg { display: none; }
+.check-box.checked svg { display: block; }
+.check-lbl { font-size: 14px; flex: 1; line-height: 1.4; }
+.check-lbl.done { color: var(--muted); text-decoration: line-through; }
+.check-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* PROGRESS RING */
+.progress-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.ring-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.ring-wrap svg { transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--surface2); stroke-width: 6; }
+.ring-fill { fill: none; stroke: var(--green); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .4s ease; }
+.ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-pct { font-size: 18px; font-weight: 500; font-family: 'DM Mono', monospace; line-height: 1; }
+.ring-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.progress-info { flex: 1; }
+.progress-info h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.progress-info p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* SAVE BTN */
+.save-btn { width: 100%; padding: 15px; background: var(--green); color: #042b17; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 4px; transition: opacity .15s; }
+.save-btn:active { opacity: .8; }
+
+/* FOOD LOG */
+.food-entry { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.food-entry:last-child { border-bottom: none; }
+.food-name { flex: 1; font-size: 14px; }
+.food-kcal { font-size: 14px; font-family: 'DM Mono', monospace; color: var(--green); }
+.food-del { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; font-size: 18px; line-height: 1; }
+.add-food { display: flex; gap: 8px; margin-top: 12px; }
+.add-food input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14px; color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+.add-food input:focus { border-color: var(--green); }
+.add-food input::placeholder { color: var(--hint); }
+.add-btn { background: var(--green-dim); border: 1px solid rgba(34,201,122,0.3); color: var(--green); border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.kcal-total { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 4px; }
+.kcal-total .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.kcal-total .val { font-size: 20px; font-family: 'DM Mono', monospace; }
+.kcal-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin-bottom: 14px; }
+.kcal-bar-fill { height: 4px; border-radius: 2px; background: var(--green); transition: width .3s; max-width: 100%; }
+.kcal-bar-fill.over { background: var(--amber); }
+
+/* HISTORY */
+.hist-week { margin-bottom: 20px; }
+.hist-week-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.hist-day { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.hist-day:last-child { border-bottom: none; }
+.hist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.hist-day-name { font-size: 13px; color: var(--muted); width: 36px; flex-shrink: 0; }
+.hist-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.hist-bar { height: 4px; border-radius: 2px; }
+.hist-score { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted); width: 28px; text-align: right; }
+
+/* STREAK DOTS */
+.streak-row { display: flex; gap: 6px; margin-bottom: 16px; justify-content: center; }
+.streak-dot { width: 32px; height: 32px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--muted); font-weight: 500; }
+.streak-dot.filled { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,201,122,0.3); }
+.streak-dot.today { border: 1.5px solid var(--green); }
+
+/* BOTTOM NAV */
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--bg); border-top: 1px solid var(--border); display: flex; padding: 8px 16px 20px; gap: 4px; z-index: 100; }
+.bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; padding: 6px 4px; border-radius: 10px; color: var(--muted); font-size: 10px; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+.bnav-btn.active { color: var(--green); }
+.bnav-btn svg { width: 22px; height: 22px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.page.active { animation: fadeIn .2s ease; }
+
+/* IMPORT ZONES */
+.import-zone { display:flex; align-items:center; gap:12px; padding:14px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; transition:border-color .15s; }
+.import-zone:active { border-color: var(--green); }
+.import-zone.done { border-color: rgba(34,201,122,0.4); background: var(--green-dim); }
+.import-icon { width:36px; height:36px; border-radius:8px; background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--muted); flex-shrink:0; }
+.import-zone.done .import-icon { color:var(--green); }
+.import-lbl { font-size:14px; color:var(--text); font-weight:500; }
+.import-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.import-badge { margin-left:auto; font-size:11px; font-family:'DM Mono',monospace; color:var(--green); text-align:right; flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-title">Hälsotracker</div>
+  <div class="nav-date" id="navDate"></div>
+</div>
+
+<div class="tabs" id="tabBar">
+  <button class="tab active" onclick="showTab('today')">Idag</button>
+  <button class="tab" onclick="showTab('food')">Mat</button>
+  <button class="tab" onclick="showTab('stats')">Stats</button>
+  <button class="tab" onclick="showTab('garmin')">Garmin</button>
+  <button class="tab" onclick="showTab('history')">Historik</button>
+</div>
+
+<!-- TODAY -->
+<div class="page active" id="tab-today">
+  <div class="progress-wrap">
+    <div class="ring-wrap">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="34"/>
+        <circle class="ring-fill" id="ringFill" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+      </svg>
+      <div class="ring-text">
+        <div class="ring-pct" id="ringPct">0%</div>
+        <div class="ring-sub">idag</div>
+      </div>
+    </div>
+    <div class="progress-info">
+      <h3 id="progressTitle">Starta dagen</h3>
+      <p id="progressSub" style="font-size:13px;color:var(--muted)">Bocka av mål nedan</p>
+    </div>
+  </div>
+
+  <div class="streak-row" id="streakRow"></div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Dagliga mål
+    </div>
+    <div id="checkList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Mätvärden
+    </div>
+    <div class="input-row">
+      <div><div class="input-lbl">Vikt</div></div>
+      <span class="input-hint">kg</span>
+      <input class="input-num" type="number" id="inp-weight" placeholder="83" step="0.1">
+    </div>
+    <div class="input-row">
+      <div><div class="input-lbl">Steg idag</div><div class="input-hint" style="font-size:11px;color:var(--muted)">mål: 8 000</div></div>
+      <input class="input-num" type="number" id="inp-steps" placeholder="0">
+    </div>
+    <div class="input-row">
+      <div><div class="input-lbl">Sömn</div></div>
+      <span class="input-hint">h</span>
+      <input class="input-num" type="number" id="inp-sleep" placeholder="7" step="0.5">
+    </div>
+    <div class="input-row">
+      <div><div class="input-lbl">Vilopuls</div></div>
+      <span class="input-hint">bpm</span>
+      <input class="input-num" type="number" id="inp-hr" placeholder="53">
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="saveDay()">Spara dagen</button>
+</div>
+
+<!-- FOOD -->
+<div class="page" id="tab-food">
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      Kostlogg – idag
+    </div>
+    <div class="kcal-total">
+      <span class="lbl">Totalt</span>
+      <span class="val" id="kcalTotal">0 kcal</span>
+    </div>
+    <div class="kcal-bar"><div class="kcal-bar-fill" id="kcalBar" style="width:0%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:14px">
+      <span>0</span><span>Mål: 2 100 kcal</span>
+    </div>
+    <div id="foodList"></div>
+    <div class="add-food">
+      <input type="text" id="foodName" placeholder="Måltid / maträtt" />
+      <input class="input-num" type="number" id="foodKcal" placeholder="kcal" style="width:72px" />
+      <button class="add-btn" onclick="addFood()">+ Lägg till</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Snabbval
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:7px" id="quickMeals"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      Energibalans
+    </div>
+    <div class="metric-grid" style="margin-bottom:0">
+      <div class="metric green">
+        <div class="m-label">Förbränning</div>
+        <div class="m-val" id="balBurn">2 448</div>
+        <div class="m-unit">kcal/dag (Garmin snitt)</div>
+      </div>
+      <div class="metric" id="balCard">
+        <div class="m-label">Intag idag</div>
+        <div class="m-val" id="balIntake">0</div>
+        <div class="m-unit">kcal loggat</div>
+      </div>
+    </div>
+    <div style="padding-top:12px;font-size:13px;color:var(--muted)" id="balMsg">Logga maten för att se balansen</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="page" id="tab-stats">
+  <div class="metric-grid">
+    <div class="metric green"><div class="m-label">Garmin dagsnitt</div><div class="m-val">2 448</div><div class="m-unit">kcal förbränning</div></div>
+    <div class="metric amber"><div class="m-label">Meal plan</div><div class="m-val">2 100</div><div class="m-unit">kcal mål/dag</div></div>
+    <div class="metric blue"><div class="m-label">Sömnsnitt</div><div class="m-val">6h 49m</div><div class="m-unit">per natt (Garmin)</div></div>
+    <div class="metric purple"><div class="m-label">Steg/dag snitt</div><div class="m-val">5 850</div><div class="m-unit">ur Garmin-data</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Mål & progress
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px" id="goalRows"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Dina nyckeltal
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Kroppsvikt</span><span style="color:var(--text);font-family:'DM Mono',monospace">83 kg</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>BMI</span><span style="color:var(--amber);font-family:'DM Mono',monospace">25,9</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Kroppsfett</span><span style="color:var(--green);font-family:'DM Mono',monospace">~21,5%</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>TDEE (beräknat)</span><span style="color:var(--text);font-family:'DM Mono',monospace">2 730 kcal</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Dagligt underskott</span><span style="color:var(--green);font-family:'DM Mono',monospace">~348 kcal</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Förväntad viktnedgång</span><span style="color:var(--green);font-family:'DM Mono',monospace">~0,35 kg/v</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- GARMIN IMPORT -->
+<div class="page" id="tab-garmin">
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importera från Garmin
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">
+      Exportera CSV från <strong style="color:var(--text)">Garmin Connect → Rapporter</strong> och ladda upp filerna nedan. Datan sparas lokalt och uppdaterar Stats-fliken automatiskt.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="import-zone" id="zone-steps" onclick="triggerFile('steps')">
+        <div class="import-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        </div>
+        <div>
+          <div class="import-lbl">Steg (Steps.csv)</div>
+          <div class="import-sub" id="sub-steps">Tryck för att välja fil</div>
+        </div>
+        <div class="import-badge" id="badge-steps"></div>
+      </div>
+      <div class="import-zone" id="zone-calories" onclick="triggerFile('calories')">
+        <div class="import-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        </div>
+        <div>
+          <div class="import-lbl">Kalorier (Calories.csv)</div>
+          <div class="import-sub" id="sub-calories">Tryck för att välja fil</div>
+        </div>
+        <div class="import-badge" id="badge-calories"></div>
+      </div>
+      <div class="import-zone" id="zone-sleep" onclick="triggerFile('sleep')">
+        <div class="import-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        </div>
+        <div>
+          <div class="import-lbl">Sömn (Sleep.csv)</div>
+          <div class="import-sub" id="sub-sleep">Tryck för att välja fil</div>
+        </div>
+        <div class="import-badge" id="badge-sleep"></div>
+      </div>
+    </div>
+    <input type="file" id="file-steps" accept=".csv" style="display:none" onchange="handleFile('steps',this)">
+    <input type="file" id="file-calories" accept=".csv" style="display:none" onchange="handleFile('calories',this)">
+    <input type="file" id="file-sleep" accept=".csv" style="display:none" onchange="handleFile('sleep',this)">
+  </div>
+
+  <div class="card" id="garmin-summary" style="display:none">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Importerad data
+    </div>
+    <div id="garmin-summary-inner" style="font-size:13px;color:var(--muted);line-height:1.9"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Exportera från Garmin Connect
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8">
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--green);font-family:'DM Mono',monospace">1.</span> Öppna <strong style="color:var(--text)">connect.garmin.com</strong></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--green);font-family:'DM Mono',monospace">2.</span> Gå till <strong style="color:var(--text)">Rapporter → Health & Fitness</strong></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--green);font-family:'DM Mono',monospace">3.</span> Välj <strong style="color:var(--text)">Steps / Calories / Sleep</strong></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--green);font-family:'DM Mono',monospace">4.</span> Välj <strong style="color:var(--text)">1 år</strong> som tidsperiod</div>
+      <div style="padding:8px 0"><span style="color:var(--green);font-family:'DM Mono',monospace">5.</span> Klicka <strong style="color:var(--text)">Exportera → CSV</strong> och ladda upp här</div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="tab-history">
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Senaste 14 dagarna
+    </div>
+    <div id="histList"></div>
+  </div>
+  <div class="card" style="margin-top:0">
+    <div class="card-title">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Streak
+    </div>
+    <div style="font-size:32px;font-family:'DM Mono',monospace;color:var(--green);margin-bottom:4px" id="streakCount">0</div>
+    <div style="font-size:13px;color:var(--muted)">dagar i rad med ≥4 mål uppnådda</div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="bnav-btn active" onclick="showTab('today');setNav(this)">
+    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Idag
+  </button>
+  <button class="bnav-btn" onclick="showTab('food');setNav(this)">
+    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+    Mat
+  </button>
+  <button class="bnav-btn" onclick="showTab('stats');setNav(this)">
+    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Stats
+  </button>
+  <button class="bnav-btn" onclick="showTab('history');setNav(this)">
+    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    Historik
+  </button>
+</nav>
+
+<script>
+const CHECKS = [
+  {id:'meal', label:'Åt enligt meal plan', sub:'~2 100 kcal'},
+  {id:'protein', label:'Nådde proteinmålet', sub:'~160g protein'},
+  {id:'steps', label:'8 000+ steg idag', sub:''},
+  {id:'sleep', label:'Minst 7h sömn', sub:''},
+  {id:'workout', label:'Styrketräning idag', sub:'mål: 2–3 ggr/vecka'},
+  {id:'water', label:'Drack 2–3 liter vatten', sub:''},
+];
+const QUICK = [
+  {n:'Frukost (havregryn+ägg)',k:450},{n:'Kycklingwrap',k:650},{n:'Proteinshake',k:220},
+  {n:'Kvarg 500g',k:270},{n:'Banan',k:90},{n:'Picadeli (stor)',k:600},
+  {n:'Middag (kyckling+ris)',k:650},{n:'Mellanmål (kvarg+bär)',k:180}
+];
+
+const todayKey = new Date().toISOString().slice(0,10);
+
+function getStore(key){ try{ return JSON.parse(localStorage.getItem(key)||'null'); }catch(e){ return null; } }
+function setStore(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){} }
+
+function fmtDate(d){ const opts={weekday:'long',day:'numeric',month:'short'}; return new Date(d).toLocaleDateString('sv-SE',opts); }
+
+document.getElementById('navDate').textContent = fmtDate(todayKey);
+
+// TABS
+function showTab(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const tabs = ['today','food','stats','garmin','history'];
+  const idx = tabs.indexOf(id);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  if(id==='history') renderHistory();
+  if(id==='garmin') renderGarminSummary();
+}
+function setNav(btn){
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// CHECKLIST
+const savedDay = getStore('day_'+todayKey) || {};
+function renderChecks(){
+  const el = document.getElementById('checkList');
+  el.innerHTML='';
+  CHECKS.forEach(c=>{
+    const row = document.createElement('div');
+    row.className='check-item';
+    row.onclick=()=>toggleCheck(c.id);
+    const checked = savedDay[c.id]||false;
+    row.innerHTML=`<div class="check-box ${checked?'checked':''}" id="cb-${c.id}"><svg width="12" height="12" fill="none" stroke="#042b17" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="check-lbl ${checked?'done':''}" id="cl-${c.id}">${c.label}</div>${c.sub?`<div class="check-sub">${c.sub}</div>`:''}</div>`;
+    el.appendChild(row);
+  });
+  updateRing();
+}
+function toggleCheck(id){
+  savedDay[id] = !savedDay[id];
+  setStore('day_'+todayKey, savedDay);
+  document.getElementById('cb-'+id).classList.toggle('checked', savedDay[id]);
+  document.getElementById('cl-'+id).classList.toggle('done', savedDay[id]);
+  updateRing();
+}
+function updateRing(){
+  const done = CHECKS.filter(c=>savedDay[c.id]).length;
+  const pct = Math.round(done/CHECKS.length*100);
+  const circ = 213.6;
+  document.getElementById('ringFill').style.strokeDashoffset = circ - (circ * pct/100);
+  document.getElementById('ringPct').textContent = pct+'%';
+  const msgs = ['Starta dagen','Bra start!','Halvvägs!','Nästan klart!','Perfekt dag!','Perfekt dag!'];
+  const subs = ['Bocka av mål nedan','Fortsätt så!','Du är på rätt spår','Ett mål kvar!','Alla mål klara 🎉','Alla mål klara 🎉'];
+  document.getElementById('progressTitle').textContent = msgs[done]||msgs[5];
+  document.getElementById('progressSub').textContent = subs[done]||subs[5];
+}
+
+// SAVE
+function saveDay(){
+  ['weight','steps','sleep','hr'].forEach(k=>{
+    const v = document.getElementById('inp-'+k).value;
+    if(v) savedDay[k]=v;
+  });
+  setStore('day_'+todayKey, savedDay);
+  const done = CHECKS.filter(c=>savedDay[c.id]).length;
+  if(done>=4){
+    const hist = getStore('streak_hist')||{};
+    hist[todayKey]=true;
+    setStore('streak_hist',hist);
+  }
+  renderStreak();
+  alert('Sparad! ✓');
+}
+
+// RESTORE inputs
+['weight','steps','sleep','hr'].forEach(k=>{
+  const el = document.getElementById('inp-'+k);
+  if(savedDay[k]) el.value=savedDay[k];
+});
+
+// STREAK
+function renderStreak(){
+  const hist = getStore('streak_hist')||{};
+  const row = document.getElementById('streakRow');
+  row.innerHTML='';
+  const days=['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
+  const today=new Date();
+  const dow=today.getDay();
+  const monday=new Date(today);
+  monday.setDate(today.getDate()-((dow+6)%7));
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    const key=d.toISOString().slice(0,10);
+    const isToday=key===todayKey;
+    const filled=hist[key]||false;
+    const dot=document.createElement('div');
+    dot.className='streak-dot'+(filled?' filled':'')+(isToday?' today':'');
+    dot.textContent=days[i];
+    row.appendChild(dot);
+  }
+}
+
+// FOOD
+let foodItems = getStore('food_'+todayKey)||[];
+function renderFood(){
+  const list=document.getElementById('foodList');
+  list.innerHTML='';
+  if(foodItems.length===0){
+    list.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Ingen mat loggad ännu</div>';
+  } else {
+    foodItems.forEach((f,i)=>{
+      const row=document.createElement('div');
+      row.className='food-entry';
+      row.innerHTML=`<div class="food-name">${f.n}</div><div class="food-kcal">${f.k} kcal</div><button class="food-del" onclick="removeFood(${i})">×</button>`;
+      list.appendChild(row);
+    });
+  }
+  const total=foodItems.reduce((a,f)=>a+f.k,0);
+  document.getElementById('kcalTotal').textContent=total.toLocaleString('sv-SE')+' kcal';
+  const pct=Math.min(total/2100*100,100);
+  const bar=document.getElementById('kcalBar');
+  bar.style.width=pct+'%';
+  bar.className='kcal-bar-fill'+(total>2100?' over':'');
+  document.getElementById('balIntake').textContent=total.toLocaleString('sv-SE');
+  const diff=2448-total;
+  const balCard=document.getElementById('balCard');
+  const balMsg=document.getElementById('balMsg');
+  if(total===0){
+    balMsg.textContent='Logga maten för att se balansen';
+    balCard.className='metric';
+  } else if(diff>0){
+    balMsg.innerHTML=`Underskott: <span style="color:var(--green);font-family:'DM Mono',monospace">−${diff.toLocaleString('sv-SE')} kcal</span> – bra för viktnedgång!`;
+    balCard.className='metric green';
+  } else {
+    balMsg.innerHTML=`Överskott: <span style="color:var(--amber);font-family:'DM Mono',monospace">+${Math.abs(diff).toLocaleString('sv-SE')} kcal</span>`;
+    balCard.className='metric amber';
+  }
+}
+function addFood(){
+  const n=document.getElementById('foodName').value.trim();
+  const k=parseInt(document.getElementById('foodKcal').value);
+  if(!n||!k||k<=0) return;
+  foodItems.push({n,k});
+  setStore('food_'+todayKey,foodItems);
+  document.getElementById('foodName').value='';
+  document.getElementById('foodKcal').value='';
+  renderFood();
+}
+function removeFood(i){
+  foodItems.splice(i,1);
+  setStore('food_'+todayKey,foodItems);
+  renderFood();
+}
+function renderQuick(){
+  const el=document.getElementById('quickMeals');
+  el.innerHTML='';
+  QUICK.forEach(q=>{
+    const btn=document.createElement('button');
+    btn.style.cssText='background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--text);cursor:pointer;font-family:"DM Sans",sans-serif;';
+    btn.textContent=q.n+' · '+q.k+' kcal';
+    btn.onclick=()=>{
+      foodItems.push({n:q.n,k:q.k});
+      setStore('food_'+todayKey,foodItems);
+      renderFood();
+      showTab('food');
+    };
+    el.appendChild(btn);
+  });
+}
+
+// GOAL ROWS
+function renderGoals(){
+  const rows=[
+    {label:'Vikt (mål: gå ner)',current:'83 kg',target:'<80 kg',pct:0,note:'Baserat på senaste inmatning'},
+    {label:'Dagliga steg',current:'5 850/dag',target:'8 000/dag',pct:73,color:'var(--blue)'},
+    {label:'Sömn',current:'6h 49m',target:'7h 30m',pct:91,color:'var(--purple)'},
+    {label:'Kaloriunderskott',current:'~348 kcal/dag',target:'300–500 kcal',pct:87,color:'var(--green)'},
+  ];
+  const el=document.getElementById('goalRows');
+  el.innerHTML='';
+  rows.forEach(r=>{
+    const div=document.createElement('div');
+    div.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px">${r.label}</span><span style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">${r.current}</span></div><div style="height:4px;background:var(--surface2);border-radius:2px;margin-bottom:4px"><div style="height:4px;border-radius:2px;background:${r.color||'var(--amber)'};width:${r.pct}%;transition:width .5s"></div></div><div style="font-size:11px;color:var(--muted)">Mål: ${r.target}</div>`;
+    el.appendChild(div);
+  });
+}
+
+// HISTORY
+function renderHistory(){
+  const hist=getStore('streak_hist')||{};
+  const el=document.getElementById('histList');
+  el.innerHTML='';
+  const days=['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
+  let streak=0;
+  const today=new Date();
+  for(let i=13;i>=0;i--){
+    const d=new Date(today);
+    d.setDate(today.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    const dayData=getStore('day_'+key)||{};
+    const food=getStore('food_'+key)||[];
+    const done=CHECKS.filter(c=>dayData[c.id]).length;
+    const kcal=food.reduce((a,f)=>a+f.k,0);
+    const row=document.createElement('div');
+    row.className='hist-day';
+    const dotColor=done>=4?'var(--green)':done>=2?'var(--amber)':'var(--surface2)';
+    const dow=(d.getDay()+6)%7;
+    row.innerHTML=`<div class="hist-dot" style="background:${dotColor}"></div><div class="hist-day-name">${days[dow]}</div><div class="hist-bars"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px"><span>${d.toLocaleDateString('sv-SE',{day:'numeric',month:'short'})}</span><span>${kcal?kcal.toLocaleString('sv-SE')+' kcal':''}</span></div><div class="hist-bar" style="background:${dotColor};width:${done/CHECKS.length*100}%"></div></div><div class="hist-score">${done}/6</div>`;
+    el.appendChild(row);
+    if(hist[key]) streak++;
+  }
+  document.getElementById('streakCount').textContent=streak;
+}
+
+// GARMIN CSV IMPORT
+function triggerFile(type){ document.getElementById('file-'+type).click(); }
+
+function handleFile(type, input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    try {
+      if(type==='steps') parseSteps(text);
+      else if(type==='calories') parseCalories(text);
+      else if(type==='sleep') parseSleep(text);
+    } catch(err) {
+      alert('Kunde inte läsa filen. Kontrollera att det är rätt CSV-fil.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVRows(text){
+  const lines = text.trim().split('\n').filter(l=>l.trim()&&!l.startsWith('#'));
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line=>{
+    const vals = line.split(',').map(v=>v.trim().replace(/"/g,''));
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=vals[i]||'');
+    return obj;
+  });
+}
+
+function parseDurationToH(s){
+  if(!s||s==='--') return null;
+  const h=s.match(/(\d+)h/), m=s.match(/(\d+)min/);
+  return (h?parseInt(h[1]):0) + (m?parseInt(m[1])/60:0);
+}
+
+function parseSteps(text){
+  const rows = parseCSVRows(text);
+  const data = rows.map(r=>{
+    const dateKey = Object.keys(r)[0];
+    const stepsKey = Object.keys(r).find(k=>k.toLowerCase().includes('actual')||k.toLowerCase().includes('steps'));
+    return {date: r[dateKey], steps: parseInt(r[stepsKey])||0};
+  }).filter(r=>r.steps>100);
+  setStore('garmin_steps', data);
+  const avg = Math.round(data.reduce((a,r)=>a+r.steps,0)/data.length);
+  const avgDay = Math.round(avg/7);
+  document.getElementById('zone-steps').classList.add('done');
+  document.getElementById('sub-steps').textContent = data.length+' veckor importerade';
+  document.getElementById('badge-steps').textContent = avgDay.toLocaleString('sv-SE')+'/dag';
+  updateStatsFromGarmin();
+  renderGarminSummary();
+}
+
+function parseCalories(text){
+  const rows = parseCSVRows(text);
+  const data = rows.map(r=>{
+    const dateKey = Object.keys(r)[0];
+    const totalKey = Object.keys(r).find(k=>k.toLowerCase().includes('total'));
+    const activeKey = Object.keys(r).find(k=>k.toLowerCase().includes('active'));
+    return {date: r[dateKey], total: parseInt(r[totalKey])||0, active: parseInt(r[activeKey])||0};
+  }).filter(r=>r.total>5000);
+  setStore('garmin_calories', data);
+  const avgDaily = Math.round(data.reduce((a,r)=>a+r.total,0)/data.length/7);
+  document.getElementById('zone-calories').classList.add('done');
+  document.getElementById('sub-calories').textContent = data.length+' veckor importerade';
+  document.getElementById('badge-calories').textContent = avgDaily.toLocaleString('sv-SE')+' kcal/dag';
+  updateStatsFromGarmin();
+  renderGarminSummary();
+}
+
+function parseSleep(text){
+  const rows = parseCSVRows(text);
+  const data = rows.map(r=>{
+    const dateKey = Object.keys(r)[0];
+    const scoreKey = Object.keys(r).find(k=>k.toLowerCase().includes('score'));
+    const durKey = Object.keys(r).find(k=>k.toLowerCase().includes('duration'));
+    const score = parseInt(r[scoreKey]);
+    const dur = parseDurationToH(r[durKey]);
+    return {date: r[dateKey], score: isNaN(score)?null:score, dur};
+  }).filter(r=>r.score!==null&&r.score>0);
+  setStore('garmin_sleep', data);
+  const avgScore = Math.round(data.reduce((a,r)=>a+r.score,0)/data.length);
+  const avgDur = data.reduce((a,r)=>a+(r.dur||0),0)/data.filter(r=>r.dur).length;
+  const h=Math.floor(avgDur), m=Math.round((avgDur-h)*60);
+  document.getElementById('zone-sleep').classList.add('done');
+  document.getElementById('sub-sleep').textContent = data.length+' veckor importerade';
+  document.getElementById('badge-sleep').textContent = avgScore+'p · '+h+'h'+m+'m';
+  updateStatsFromGarmin();
+  renderGarminSummary();
+}
+
+function updateStatsFromGarmin(){
+  const steps = getStore('garmin_steps');
+  const cals = getStore('garmin_calories');
+  const sleep = getStore('garmin_sleep');
+  if(steps){
+    const avg=Math.round(steps.reduce((a,r)=>a+r.steps,0)/steps.length/7);
+    document.querySelectorAll('.m-val').forEach((el,i)=>{
+      if(el.closest('.metric') && el.closest('.metric').querySelector('.m-unit')?.textContent.includes('steg')){
+        el.textContent=avg.toLocaleString('sv-SE');
+      }
+    });
+  }
+  if(cals){
+    const avg=Math.round(cals.reduce((a,r)=>a+r.total,0)/cals.length/7);
+    document.getElementById('balBurn').textContent=avg.toLocaleString('sv-SE');
+  }
+}
+
+function renderGarminSummary(){
+  const steps=getStore('garmin_steps');
+  const cals=getStore('garmin_calories');
+  const sleep=getStore('garmin_sleep');
+  if(!steps&&!cals&&!sleep) return;
+  const card=document.getElementById('garmin-summary');
+  const inner=document.getElementById('garmin-summary-inner');
+  card.style.display='block';
+  let html='';
+  if(steps){
+    const avg=Math.round(steps.reduce((a,r)=>a+r.steps,0)/steps.length/7);
+    const best=steps.reduce((a,r)=>r.steps>a.steps?r:a,steps[0]);
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Snitt steg/dag</span><span style="color:var(--green);font-family:'DM Mono',monospace">${avg.toLocaleString('sv-SE')}</span></div>`;
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Bästa vecka</span><span style="color:var(--text);font-family:'DM Mono',monospace">${best.steps.toLocaleString('sv-SE')} steg</span></div>`;
+  }
+  if(cals){
+    const avg=Math.round(cals.reduce((a,r)=>a+r.total,0)/cals.length/7);
+    const underskott=avg-2100;
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Snitt förbränning/dag</span><span style="color:var(--green);font-family:'DM Mono',monospace">${avg.toLocaleString('sv-SE')} kcal</span></div>`;
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Kaloriunderskott</span><span style="color:var(--green);font-family:'DM Mono',monospace">−${underskott.toLocaleString('sv-SE')} kcal/dag</span></div>`;
+  }
+  if(sleep){
+    const avgScore=Math.round(sleep.reduce((a,r)=>a+r.score,0)/sleep.length);
+    const durs=sleep.filter(r=>r.dur);
+    const avgDur=durs.reduce((a,r)=>a+r.dur,0)/durs.length;
+    const h=Math.floor(avgDur),m=Math.round((avgDur-h)*60);
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Snitt sömnpoäng</span><span style="color:var(--purple);font-family:'DM Mono',monospace">${avgScore} / 100</span></div>`;
+    html+=`<div style="display:flex;justify-content:space-between;padding:6px 0"><span>Snitt sömnlängd</span><span style="color:var(--purple);font-family:'DM Mono',monospace">${h}h ${m}m</span></div>`;
+  }
+  inner.innerHTML=html;
+}
+
+// restore import badges on load
+(function(){
+  ['steps','calories','sleep'].forEach(type=>{
+    const d=getStore('garmin_'+type);
+    if(!d||!d.length) return;
+    document.getElementById('zone-'+type).classList.add('done');
+    if(type==='steps'){
+      const avg=Math.round(d.reduce((a,r)=>a+r.steps,0)/d.length/7);
+      document.getElementById('sub-'+type).textContent=d.length+' veckor importerade';
+      document.getElementById('badge-'+type).textContent=avg.toLocaleString('sv-SE')+'/dag';
+    } else if(type==='calories'){
+      const avg=Math.round(d.reduce((a,r)=>a+r.total,0)/d.length/7);
+      document.getElementById('sub-'+type).textContent=d.length+' veckor importerade';
+      document.getElementById('badge-'+type).textContent=avg.toLocaleString('sv-SE')+' kcal/dag';
+      document.getElementById('balBurn').textContent=avg.toLocaleString('sv-SE');
+    } else if(type==='sleep'){
+      const avgScore=Math.round(d.reduce((a,r)=>a+r.score,0)/d.length);
+      const durs=d.filter(r=>r.dur);
+      const avgDur=durs.reduce((a,r)=>a+r.dur,0)/durs.length;
+      const h=Math.floor(avgDur),m=Math.round((avgDur-h)*60);
+      document.getElementById('sub-'+type).textContent=d.length+' veckor importerade';
+      document.getElementById('badge-'+type).textContent=avgScore+'p · '+h+'h'+m+'m';
+    }
+  });
+})();
+renderStreak();
+renderFood();
+renderQuick();
+renderGoals();
+</script>
+</body>
+</html>
